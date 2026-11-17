@@ -311,8 +311,17 @@ impl Transform {
     /// `[0, max(zoomOutLimit, totalDuration) + 4 - zoom]`, where `zoom` is
     /// whatever the transform carries *now* -- which is why `update_zoom`
     /// writes the zoom before it calls this.
+    ///
+    /// A viewport that already fits the whole project is pinned to the start.
+    /// The source's four-second slack otherwise let a fully zoomed-out
+    /// timeline hide its first seconds, while the minimap -- its only pan
+    /// affordance at that zoom -- was hidden too.
     pub fn set_position(&mut self, position: f64, total_duration: f64) {
-        let upper = zoom_out_limit(total_duration).max(total_duration) + 4. - self.zoom;
+        let upper = if self.zoom >= total_duration {
+            0.
+        } else {
+            zoom_out_limit(total_duration).max(total_duration) + 4. - self.zoom
+        };
         self.position = position.max(0.).min(upper);
     }
 
@@ -4216,7 +4225,9 @@ mod tests {
         assert_eq!(Transform::restored(saved, 61.0), Some(saved));
         let shorter = Transform::restored(saved, 10.0).unwrap();
         assert_eq!(shorter.zoom, 10.0);
-        assert_eq!(shorter.position, 4.0);
+        // The saved zoom now fits the whole shorter project, so the view is
+        // pinned to its start instead of keeping a hidden lead-in.
+        assert_eq!(shorter.position, 0.0);
         assert_eq!(Transform::restored(Transform::default(), 61.0), None);
     }
 
@@ -4289,7 +4300,7 @@ mod tests {
     }
 
     #[test]
-    fn position_clamps_to_zero_and_to_the_content_end_plus_four() {
+    fn position_clamps_to_zero_the_content_end_and_a_fitting_view() {
         let total = 60.0;
         let mut transform = Transform {
             zoom: 10.,
@@ -4300,11 +4311,41 @@ mod tests {
         transform.set_position(10_000., total);
         // `max(zoomOutLimit, totalDuration) + 4 - zoom`.
         assert_eq!(transform.position, 60. + 4. - 10.);
-        // Zoomed all the way out there is nowhere to pan except the 4s of
-        // slack.
+        // A viewport that fits the project has no slack to pan into: any
+        // position would hide the timeline's first seconds.
         let mut wide = Transform::initial(total);
         wide.set_position(100., total);
-        assert_eq!(wide.position, 4.);
+        assert_eq!(wide.position, 0.);
+    }
+
+    /// Zooming out is anchored on the playhead, so a view whose playhead sits
+    /// right of the left edge lands on a positive position at full zoom-out.
+    /// The whole project fits then, so the start must stay on screen.
+    #[test]
+    fn zooming_out_anchored_on_the_playhead_does_not_hide_the_timeline_start() {
+        let total = 60.0;
+        let mut transform = Transform {
+            zoom: 10.,
+            position: 45.,
+        };
+        transform.apply_slider(0.0, 50., total);
+        assert_eq!(transform.zoom, total);
+        assert_eq!(transform.position, 0.);
+    }
+
+    /// `onHandleReleased` re-fits a view after a trim that shortens the
+    /// project. It is anchored on the trimmed edge, which can be mid-view,
+    /// and the result must still start at 0.
+    #[test]
+    fn a_trim_that_fits_the_project_again_returns_the_view_to_the_start() {
+        let total = 50.0;
+        let mut transform = Transform {
+            zoom: 10.,
+            position: 45.,
+        };
+        transform.update_zoom(total, 50., total);
+        assert_eq!(transform.zoom, total);
+        assert_eq!(transform.position, 0.);
     }
 
     /// A project longer than the 600s zoom-out limit can still be panned to

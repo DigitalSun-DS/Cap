@@ -2628,6 +2628,8 @@ impl EditorWindow {
         self.refresh_markers();
         if self.timeline.total_duration > 0.0 {
             self.total = self.timeline.total_duration;
+            let (position, total) = (self.view.transform.position, self.total);
+            self.view.transform.set_position(position, total);
             // Deleting or trimming the clip under the playhead shortens the
             // timeline past it; bring the playhead back to the new end the way
             // `setPlayhead` clamps it (`ED/context.ts:2424`).
@@ -4007,12 +4009,15 @@ impl EditorWindow {
     /// timeline transform back to the start. **Not** a frame step -- neither
     /// transport button is one in the Tauri editor.
     pub fn jump_to_start(&mut self, cx: &mut Context<Self>) {
+        self.view.transform.set_position(0.0, self.total_duration());
         if self.preparing_transport_active() && self.preparing_controls_ready() {
             self.preparing_command(Some(0.0), Some(false));
+            cx.notify();
             return;
         }
         self.stop_playback(cx);
         self.seek_to_time(0.0, cx);
+        cx.notify();
     }
 
     /// The next button (`Player.tsx:395-405`): stop, playhead to the end.

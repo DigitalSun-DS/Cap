@@ -1613,6 +1613,7 @@ drops to the baseline.
 
 | | |
 |---|---|
+| **A timeline that fits the project is pinned to 0** | `setPosition` (`ED/context.ts:1475-1487`) always allows four seconds of panning slack, so a fully zoomed-out view could start several seconds in with its first clip cut off and the minimap (hidden at that zoom) unavailable to pan back. gpui pins a fitting viewport to 0, so zooming out and a trim's release never hide the start; `jump_to_start` also resets the viewport, the way the source's prev button does (`Player.tsx:454,461`). |
 | **The edge fade is painted, not masked** | The source dissolves the timeline's own edges with a `mask-image` whose stops ramp over `FADE_RAMP_PX = 50` of scroll (`TL/index.tsx:1097-1139`). gpui has no mask-image, so the same two strengths drive two 32px gradients painted in the editor's root background colour. Identical over an opaque background, which is the only one there is. |
 | **The hold band has no hatch** | A paused window inside a clip is `bg-black/45` plus a `repeating-linear-gradient` 45° hatch (`TL/ClipTrack.tsx:970-980`). gpui has no repeating gradient; the wash, the border, the pause glyph and the "Paused" label at ≥64px are all there, the hatch is not. |
 | **Three-stop gradients are two elements** | `gpui::linear_gradient` takes exactly two stops, so the in-clip tick markings' `from-transparent … via-white-transparent-40 … to-transparent` is drawn as two stacked halves, and the playhead's `to-120%` is folded into the end stop's alpha (at the bottom edge it still carries 1/6 of it). |
