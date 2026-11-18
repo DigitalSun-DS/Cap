@@ -1548,6 +1548,7 @@ impl EditorWindow {
             .iter()
             .filter_map(|index| self.shape_segments().get(*index).cloned())
             .collect();
+        self.effect_clipboard = crate::editor_effect_clipboard::EffectClipboard::Empty;
         !self.shape_clipboard.is_empty()
     }
 
