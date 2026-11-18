@@ -352,3 +352,14 @@ debug = "line-tables-only"
 codegen-units = 1
 lto = "thin"
 strip = "symbols"
+
+# Local iteration profile. Optimized like release, but without the thin-LTO
+# pass or serialized codegen, so a one-file edit relinks in minutes instead of
+# tens of minutes. Not a shipping profile: never use it for performance
+# measurements or release artifacts.
+[profile.dist-fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
+strip = "symbols"

@@ -123,3 +123,13 @@ Before declaring any task complete, the agent should run the fastest useful chec
 - **Rust**: `cargo fmt --all` and `cargo check -p <crate>` for the touched crate. Add `--all-targets`, `--workspace`, or `cargo clippy -p <crate> --all-targets -- -D warnings` only for explicit requests, CI/PR final validation, or changes that need broader coverage.
 - **TS / JS / JSON / CSS / MD**: prefer scoped checks such as `bun run biome check --write <files>`. Use full `bun run format`, `bun run lint`, and `bun run typecheck` only when explicitly requested or when the change is broad enough to justify it.
 - If a scoped check fails, fix the violation in the source (do NOT suppress with `#[allow(...)]`, `// biome-ignore`, or `any` unless explicitly approved). The Pre-Generation Invariants show the correct form for every denied lint.
+
+## Fast local builds (desktop-gpui)
+See `apps/desktop-gpui/BUILDING.md` for the full workflow and measured timings.
+
+- Inner loop: `cargo check -p cap-desktop-gpui` (or the dev profile). Do not run the stock `release` profile for routine iteration.
+- Optimized local build: `powershell -NoProfile -File scripts/gpui-fast.ps1 -Mode build`. It uses `[profile.dist-fast]` (no LTO, 16 codegen units, incremental) and is not a shipping profile.
+- Tests: `powershell -NoProfile -File scripts/gpui-fast.ps1 -Mode test -Filter <module>::tests`. The script puts the ffmpeg/ONNX/DXC DLLs on `PATH` and disables test debug info; without the DLLs the harness exits `STATUS_DLL_NOT_FOUND`.
+- Portable Windows build: `powershell -NoProfile -File scripts/gpui-fast.ps1 -Mode package`.
+- Keep the stock `release` profile for release artifacts and performance measurements.
+- In this checkout, format only the files you touched; `cargo fmt --all` rewrites unrelated committed files with the local rustfmt version.
