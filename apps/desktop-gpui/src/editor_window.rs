@@ -1764,6 +1764,9 @@ pub struct EditorWindow {
     /// What a new shape is: the kind last drawn, added or picked.
     pub(crate) last_shape_kind: cap_project::ShapeKind,
     pub(crate) shape_clipboard: Vec<cap_project::ShapeSegment>,
+    /// The zoom/3D lane clipboard. Shapes keep theirs in `shape_clipboard`;
+    /// copying on either side clears the other.
+    pub(crate) effect_clipboard: crate::editor_effect_clipboard::EffectClipboard,
 
     preview_quality: crate::store::EditorPreviewQuality,
     preview_speed: cap_editor::PreviewSpeed,
@@ -2440,6 +2443,7 @@ impl EditorWindow {
             shape_tool_trigger: Rc::new(std::cell::Cell::new(None)),
             last_shape_kind: cap_project::ShapeKind::Arrow,
             shape_clipboard: Vec::new(),
+            effect_clipboard: crate::editor_effect_clipboard::EffectClipboard::Empty,
             preview_quality: crate::store::GeneralSettings::load().editor_preview_quality,
             preview_speed: crate::store::GeneralSettings::load().editor_preview_speed,
             tracks: TrackLanes::from_project(&ProjectConfiguration::default(), false),
@@ -2893,7 +2897,7 @@ impl EditorWindow {
         changed
     }
 
-    fn edit(
+    pub(crate) fn edit(
         &mut self,
         change: impl FnOnce(&mut TimelineConfiguration) -> bool,
         window: &mut Window,
@@ -4438,6 +4442,13 @@ impl EditorWindow {
         // Undo / redo, registered on `window` by `createStoreHistory`
         // (`ED/context.ts:1931-1948`): `Mod+Z`, `Shift+Mod+Z` and `Mod+Y`.
         if modifier && !keystroke.modifiers.alt {
+            if !keystroke.modifiers.shift
+                && self.effect_clipboard_key(keystroke.key.as_str(), window, cx)
+            {
+                cx.stop_propagation();
+                window.refresh();
+                return;
+            }
             match keystroke.key.as_str() {
                 "z" => {
                     cx.stop_propagation();

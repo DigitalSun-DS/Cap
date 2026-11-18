@@ -33,6 +33,7 @@ mod editor_clips;
 mod editor_color;
 mod editor_crop;
 mod editor_edits;
+mod editor_effect_clipboard;
 mod editor_export;
 mod editor_hover_bench;
 mod editor_latency;
